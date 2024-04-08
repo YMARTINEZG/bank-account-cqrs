@@ -1,0 +1,23 @@
+spring:
+  r2dbc:
+    url: r2dbc:postgresql://postgres@localhost:5432/microservices
+    username: ${PG_USERNAME:postgres}
+    password: ${PG_PASSWORD:postgres}
+  kafka:
+    producer:
+      client-id: ${KAFKA_CLIENT_ID:cqrs-test}
+      bootstrap-servers: localhost:9092
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.ByteArraySerializer
+    consumer:
+      bootstrap-servers: localhost:9092
+      group-id: cqrs-test
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.ByteArrayDeserializer
+application:
+  configs:
+    topic:
+      name: ${KAFKA_TOPIC:eventstore}
+    group:
+      name: ${KAFKA_CLIENT_ID:cqrs-test}
