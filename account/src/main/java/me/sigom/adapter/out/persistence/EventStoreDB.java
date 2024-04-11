@@ -7,7 +7,7 @@ import reactor.core.publisher.Mono;
 
 
 public interface EventStoreDB {
-    <T extends AggregateRoot> Mono<Void> save(final T aggregate);
+    <T extends AggregateRoot> Mono<String> save(final T aggregate);
     <T extends AggregateRoot> Mono<T> load(final String aggregateId, final Class<T> aggregateType);
     Mono<Boolean> exists(final String aggregateId);
 

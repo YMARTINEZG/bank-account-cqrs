@@ -1,6 +1,7 @@
 package me.sigom.common.utils;
 
 import me.sigom.domain.model.AggregateRoot;
+import me.sigom.domain.model.Event;
 import me.sigom.domain.model.Snapshot;
 
 import java.time.LocalDateTime;
@@ -29,6 +30,16 @@ public class EventSourcingUtils {
                 .build();
     }
 
+    public static Snapshot snapshotFromEvent(final Event event) {
+        return Snapshot.builder()
+                .snapshotId(UUID.randomUUID())
+                .aggregateId(event.getAggregateId())
+                .aggregateType(event.getAggregateType())
+                .version(event.getVersion())
+                .data(event.getData())
+                .timestamp(ZonedDateTime.now())
+                .build();
+    }
     public static <T extends AggregateRoot> T aggregateFromSnapshot(final Snapshot snapshot, final Class<T> valueType) {
         return SerializerUtils.deserializeFromJsonBytes(snapshot.getData(), valueType);
     }

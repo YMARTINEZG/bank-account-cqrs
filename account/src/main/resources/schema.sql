@@ -10,7 +10,8 @@ CREATE TABLE event
     timestamp      TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     data           BYTEA,
     metadata       BYTEA,
-    version        SERIAL       NOT NULL
+    version        SERIAL       NOT NULL,
+    UNIQUE (aggregate_id, version)
 );
 
 CREATE TABLE bank_account_document

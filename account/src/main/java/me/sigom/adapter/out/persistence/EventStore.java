@@ -31,11 +31,11 @@ public class EventStore implements EventStoreDB{
     }
 
     @Override
-    public <T extends AggregateRoot> Mono<Void> save(T aggregate) {
-           logger.info("Saving Event with aggregateId = " + aggregate.toString());
-           Mono<Event> result = eventRepository.save(aggregate.getChanges());
-           result.subscribe(eventBus::publish, Throwable::printStackTrace);
-           return Mono.create(s -> {logger.info("event successfully persisted "); s.success();});
+    public <T extends AggregateRoot> Mono<String> save(T aggregate) {
+        return this.saveEvent(aggregate.getChanges())
+                .flatMap(this::saveSnapshot)
+                .doOnSuccess(s -> eventBus.publish(aggregate.getChanges()))
+                .flatMap(s -> Mono.just(aggregate.getId()));
     }
     @Override
     public <T extends AggregateRoot> Mono<T> load(String aggregateId, Class<T> aggregateType) {
@@ -48,30 +48,19 @@ public class EventStore implements EventStoreDB{
 
     @Override
     public Mono<Boolean> exists(String aggregateId) {
-        return null;
+        return snapshotRepository.findByAggregateId(aggregateId).hasElement();
     }
 
-
-    private Mono<Event> saveEvent(AggregateRoot aggregate) {
-        Mono<Event> eventMono = eventRepository.save(aggregate.getChanges());
-        eventMono.subscribe(e -> logger.info("Event persisted"), Throwable::printStackTrace);
-        return eventMono;
+    private Mono<Event> saveEvent(Event event) {
+        return eventRepository.save(event);
     }
 
-    private void saveSnapshot(AggregateRoot aggregate) {
-        logger.info("saveSnapshot (SAVE SNAPSHOT) from aggregate >>>>>> " + aggregate.toString());
-        aggregate.toSnapshot();
-        Snapshot snapshot = EventSourcingUtils.snapshotFromAggregate(aggregate);
+    private Mono<Snapshot> saveSnapshot(Event event) {
+        Snapshot snapshot = EventSourcingUtils.snapshotFromEvent(event);
         logger.info("saveSnapshot (SAVE SNAPSHOT) to persist >>>>>> " + snapshot.toString());
-        snapshotRepository.findByAggregateId(snapshot.getAggregateId())
-                .doOnError(e -> snapshotRepository.save(snapshot))
-                .map( c -> {
-                              c.setData(aggregate.getChanges().getData());
-                              return c;
-                        })
-                .flatMap(c -> snapshotRepository.save(snapshot))
-
-                .subscribe(s -> logger.info("Snapshot persisted"), Throwable::printStackTrace);
+        return this.exists(snapshot.getAggregateId()).flatMap(exist -> exist ? Mono.error(new Exception("Snapshot already in use"))
+                : snapshotRepository.save(snapshot)
+        );
     }
     private <T extends AggregateRoot> T getSnapshotFromClass(Snapshot snapshot, String aggregateId, Class<T> aggregateType) {
         if (snapshot == null) {
